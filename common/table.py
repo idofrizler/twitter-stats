@@ -15,7 +15,7 @@ class UserState(Enum):
     InProgress = 2
     Completed = 3
 
-connection_string = os.getenv('CONNECTION_STRING')
+connection_string = os.environ['QueueConnectionString']
 table_client = TableClient.from_connection_string(connection_string, TABLE_NAME)
 
 

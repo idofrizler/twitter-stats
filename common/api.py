@@ -4,7 +4,7 @@ from time import sleep
 
 
 def auth():
-    return os.getenv('TOKEN')
+    return os.environ['TwitterToken']
 
 
 def create_headers(bearer_token):
