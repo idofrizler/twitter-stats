@@ -34,3 +34,14 @@ def create_url_user_followers(user_id, pagination_token=None):
         'pagination_token': pagination_token
     }
     return search_url, query_params
+
+def create_url_recent_tweets_on_conversation(tweet_id, since_id, pagination_token=None):
+    search_url = '{}tweets/search/recent?query=conversation_id%3A{}'.format(TWITTER_URL_PREFIX, tweet_id)
+    query_params = {
+        'since_id': since_id,
+        'max_results': 100,
+        'tweet.fields': 'id,created_at,text,author_id,in_reply_to_user_id,entities,public_metrics,conversation_id',
+        'user.fields': 'id,name,username,public_metrics',
+        'pagination_token': pagination_token
+    }
+    return search_url, query_params

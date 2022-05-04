@@ -1,9 +1,6 @@
 import logging
 import azure.functions as func
-from .api import *
-
-bearer_token = auth()
-headers = create_headers(bearer_token)
+from ..common import api
 
 
 def get_pulitzer_tweet(user_id):
@@ -12,7 +9,7 @@ def get_pulitzer_tweet(user_id):
     max_tweet = None
 
     pagination_token = 'FIRST_RUN'
-    tweets = get_user_tweets(headers, user_id)
+    tweets = api.get_user_tweets(user_id)
     while pagination_token:
         for tweet in tweets['data']:
             current_likes_count = tweet['public_metrics']['like_count']
@@ -22,7 +19,7 @@ def get_pulitzer_tweet(user_id):
 
         pagination_token = tweets['meta'].get('next_token', None)
         if pagination_token:
-            tweets = get_user_tweets(headers, user_id, pagination_token)
+            tweets = api.get_user_tweets(user_id, pagination_token)
 
     return max_tweet
 
