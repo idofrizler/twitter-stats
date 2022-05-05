@@ -14,9 +14,8 @@
 * Pass bearer token to code in production (KeyVault?)
 * Same for connection strings to Queues/Tables
 * Add more stats such as:
-  * Total number of tweets
-  * Total number of likes/retweets/quotes/comments
-  * Tweet to like ratio
+  * Most used word/emoji/gif in tweets
+  * Most commented to user
   * `liked_tweets` metric
 * Edge cases:
   * 429 while handling a user

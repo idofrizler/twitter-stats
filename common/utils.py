@@ -6,4 +6,4 @@ def add_tweet_to_tracked_list(tweet_id, author_id):
 
 
 if __name__ == '__main__':
-    add_tweet_to_tracked_list(1521717409316589568, 86149476)
+    add_tweet_to_tracked_list(1521900288327753734, 2847890797)
