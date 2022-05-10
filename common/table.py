@@ -1,3 +1,5 @@
+from abc import ABC
+from collections import UserString
 from datetime import datetime
 from distutils.dep_util import newer
 import os
@@ -5,49 +7,80 @@ from azure.data.tables import TableClient, UpdateMode
 from enum import Enum
 
 
-TABLE_URL = 'https://twitterstatsrga0df.table.core.windows.net/CommentingUsers'
-TABLE_NAME = 'CommentingUsers'
-USERS_PARTITION_KEY = 'users'
-TRACKED_TWEETS_PARTITION_KEY = 'tracked_tweets'
-
-class UserState(Enum):
-    New = 1
-    InProgress = 2
-    Completed = 3
-
 connection_string = os.environ['QueueConnectionString']
-table_client = TableClient.from_connection_string(connection_string, TABLE_NAME)
 
 
-def get_preexisting_commenting_users_from_table():
-    query_filter = 'PartitionKey eq \'{}\' and (State eq \'{}\' or State eq \'{}\')' \
-        .format(USERS_PARTITION_KEY, UserState.Completed, UserState.InProgress)
-    entities = table_client.query_entities(query_filter)
-    return [entity['RowKey'] for entity in entities]
+class Table(ABC):
+    def __init__(self, table_name) -> None:
+        super().__init__()
+        self.table_client = TableClient.from_connection_string(connection_string, table_name)
 
 
-def update_new_comment_for_processing(user_id):
-    doc = {
-        'PartitionKey': USERS_PARTITION_KEY,
-        'RowKey': str(user_id),
-        'State': UserState.InProgress,
-        'ModifiedDate': datetime.utcnow()
-    }
-    table_client.upsert_entity(mode=UpdateMode.MERGE, entity=doc)
+class TrackedTweetsTable(Table):
+    TRACKED_TWEETS_TABLE_NAME = 'TrackedTweets'
+
+    def __init__(self) -> None:
+        super().__init__(self.TRACKED_TWEETS_TABLE_NAME)
+
+    def read_tracked_tweets_from_table(self):
+        query_filter = '' # Read all documents
+        tracked_tweets = self.table_client.query_entities(query_filter)
+        return [(tweet['PartitionKey'], tweet['RowKey'], tweet['SinceId']) for tweet in tracked_tweets]
+
+    def update_newest_id(self, tweet_id, author_id, newest_id):
+        doc = {
+            'PartitionKey': str(tweet_id),
+            'RowKey': str(author_id),
+            'SinceId': str(newest_id),
+            'ModifiedDate': datetime.utcnow()
+        }
+        self.table_client.upsert_entity(mode=UpdateMode.MERGE, entity=doc)
 
 
-def read_tracked_tweets_from_table():
-    query_filter = 'PartitionKey eq \'{}\''.format(TRACKED_TWEETS_PARTITION_KEY)
-    tracked_tweets = table_client.query_entities(query_filter)
-    return [(tweet['RowKey'], tweet['AuthorId'], tweet['SinceId']) for tweet in tracked_tweets]
+class UsersTable(Table):
+    USERS_TABLE_NAME = 'CommentingUsers'
 
+    class UserState(Enum):
+        InProgress = 1
+        StatsAdded = 2
+        Completed = 3
 
-def update_newest_id(tweet_id, author_id, newest_id):
-    doc = {
-        'PartitionKey': TRACKED_TWEETS_PARTITION_KEY,
-        'RowKey': str(tweet_id),
-        'AuthorId': str(author_id),
-        'SinceId': str(newest_id),
-        'ModifiedDate': datetime.utcnow()
-    }
-    table_client.upsert_entity(mode=UpdateMode.MERGE, entity=doc)
+    def __init__(self) -> None:
+        super().__init__(self.USERS_TABLE_NAME)
+
+    def get_preexisting_commenting_users(self, tweet_id):
+        query_filter = 'PartitionKey eq \'{}\' and (State eq \'{}\' or State eq \'{}\')' \
+            .format(tweet_id, self.UserState.Completed, self.UserState.InProgress)
+        entities = self.table_client.query_entities(query_filter)
+        return [entity['RowKey'] for entity in entities]
+
+    def get_stats_for_user(self, tweet_id, user_id):
+        entity = self.table_client.get_entity(tweet_id, user_id)
+        return entity
+
+    def update_new_comment_for_processing(self, tweet_id, user_id):
+        doc = {
+            'PartitionKey': str(tweet_id),
+            'RowKey': str(user_id),
+            'State': self.UserState.InProgress,
+            'ModifiedDate': datetime.utcnow()
+        }
+        self.table_client.upsert_entity(mode=UpdateMode.MERGE, entity=doc)
+
+    def update_twitter_stats_for_user(self, tweet_id, user_id, comment_id, tweet_stats):
+        max_tweet_id, total_like_count, total_reply_count, total_retweet_count, total_quote_count, num_of_tweets, most_replied_to = tweet_stats
+        doc = {
+            'PartitionKey': str(tweet_id),
+            'RowKey': '{}|{}'.format(user_id, comment_id),
+            'MaxTweetId': max_tweet_id,
+            'TotalLikeCount':total_like_count,
+            'TotalReplyCount':total_reply_count,
+            'TotalRetweetCount':total_retweet_count,
+            'TotalQuoteCount':total_quote_count,
+            'NumOfTweets':num_of_tweets,
+            'MostRepliedToUser':most_replied_to[0] if most_replied_to else None,
+            'MostRepliedToTimes':most_replied_to[1] if most_replied_to else None,
+            'State': self.UserState.StatsAdded,
+            'ModifiedDate': datetime.utcnow()
+        }
+        self.table_client.upsert_entity(mode=UpdateMode.MERGE, entity=doc)

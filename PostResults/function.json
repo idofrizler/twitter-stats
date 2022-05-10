@@ -2,16 +2,9 @@
   "scriptFile": "__init__.py",
   "bindings": [
     {
-      "name": "msgin",
+      "name": "msg",
       "type": "queueTrigger",
       "direction": "in",
-      "queueName": "user-ids-to-process",
-      "connection": "QueueConnectionString"
-    },
-    {
-      "type": "queue",
-      "direction": "out",
-      "name": "msgout",
       "queueName": "results",
       "connection": "QueueConnectionString"
     }
