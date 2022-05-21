@@ -52,7 +52,8 @@ def get_twitter_stats(user_id):
 
     # We want most replied to, except if it's the user itself
     most_replied_to = None
-    replied_to_dict.pop(user_id)
+    if user_id in replied_to_dict.keys():
+        replied_to_dict.pop(user_id)
 
     if len(replied_to_dict.items()) > 0:
         most_replied_to_tuple = sorted(replied_to_dict.items(), key=lambda k_v: k_v[1], reverse=True)[0]

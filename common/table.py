@@ -49,19 +49,19 @@ class UsersTable(Table):
         super().__init__(self.USERS_TABLE_NAME)
 
     def get_preexisting_commenting_users(self, tweet_id):
-        query_filter = 'PartitionKey eq \'{}\' and (State eq \'{}\' or State eq \'{}\')' \
-            .format(tweet_id, self.UserState.Completed, self.UserState.InProgress)
+        query_filter = 'PartitionKey eq \'{}\''.format(tweet_id)
         entities = self.table_client.query_entities(query_filter)
-        return [entity['RowKey'] for entity in entities]
+        return set([entity['RowKey'] for entity in entities])
 
     def get_stats_for_user(self, tweet_id, user_id):
         entity = self.table_client.get_entity(tweet_id, user_id)
         return entity
 
-    def update_new_comment_for_processing(self, tweet_id, user_id):
+    def update_new_comment_for_processing(self, tweet_id, user_id, comment_id):
         doc = {
             'PartitionKey': str(tweet_id),
             'RowKey': str(user_id),
+            'CommentId': str(comment_id),
             'State': self.UserState.InProgress,
             'ModifiedDate': datetime.utcnow()
         }
@@ -71,7 +71,8 @@ class UsersTable(Table):
         max_tweet_id, total_like_count, total_reply_count, total_retweet_count, total_quote_count, num_of_tweets, most_replied_to = tweet_stats
         doc = {
             'PartitionKey': str(tweet_id),
-            'RowKey': '{}|{}'.format(user_id, comment_id),
+            'RowKey': str(user_id),
+            'CommentId': str(comment_id),
             'MaxTweetId': max_tweet_id,
             'TotalLikeCount':total_like_count,
             'TotalReplyCount':total_reply_count,
@@ -81,6 +82,28 @@ class UsersTable(Table):
             'MostRepliedToUser':most_replied_to[0] if most_replied_to else None,
             'MostRepliedToTimes':most_replied_to[1] if most_replied_to else None,
             'State': self.UserState.StatsAdded,
+            'ModifiedDate': datetime.utcnow()
+        }
+        self.table_client.upsert_entity(mode=UpdateMode.MERGE, entity=doc)
+
+class OauthTokenTable(Table):
+
+    OAUTH_TOKEN_TABLE_NAME = 'OauthToken'
+    PARTITION_KEY = 'TokenPartition'
+    ROW_KEY = 'TokenRow'
+
+    def __init__(self) -> None:
+        super().__init__(self.OAUTH_TOKEN_TABLE_NAME)
+
+    def get_current_token(self):
+        entity = self.table_client.get_entity(self.PARTITION_KEY, self.ROW_KEY)
+        return entity['Value']
+
+    def set_new_token(self, new_token):
+        doc = {
+            'PartitionKey': self.PARTITION_KEY,
+            'RowKey': self.ROW_KEY,
+            'Value': new_token,
             'ModifiedDate': datetime.utcnow()
         }
         self.table_client.upsert_entity(mode=UpdateMode.MERGE, entity=doc)

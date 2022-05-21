@@ -1,4 +1,5 @@
 import os, requests
+from venv import create
 from ..common import urls
 from time import sleep
 
@@ -7,8 +8,10 @@ def auth():
     return os.environ['TwitterToken']
 
 
-def create_headers(bearer_token):
+def create_headers(bearer_token, is_json=False):
     headers = {"Authorization": "Bearer {}".format(bearer_token)}
+    if is_json:
+        headers['Content-type'] = 'application/json'
     return headers
 
 
@@ -22,7 +25,7 @@ def connect_to_endpoint(url, headers, params=None, next_token=None, method="GET"
         sleep(300)  # Sleep for 5 minutes and try again
         response = requests.request(method, url, headers=headers, params=params)
 
-    if response.status_code != 200:
+    if response.status_code not in (200, 201):
          raise Exception(response.status_code, response.text)
 
     return response.json()
@@ -72,11 +75,18 @@ def get_recent_comments_from_twitter(tweet_id, since_id, pagination_token=None):
 
 # Post comment
 
-def post_comment(comment_id, text):
+def post_comment(comment_id, text, oauth_token):
     url, data = urls.create_url_post_in_reply_to_tweet(comment_id, text)
-    post_headers = headers.copy()
-    post_headers['Content-type'] = 'application/json'
+    # oauth_token = os.environ['OauthToken']
+    post_headers = create_headers(oauth_token, True)
     connect_to_endpoint(url, method="POST", headers=post_headers, data=data)
+
+
+# Oauth token refresh
+
+def get_new_oauth_token(current_token):
+    # TODO
+    pass
 
 # Init auth information
 

@@ -1,3 +1,6 @@
+import json
+
+
 TWITTER_URL_PREFIX = 'https://api.twitter.com/2/'
 
 
@@ -5,6 +8,7 @@ def create_url_user_tweets(user_id, pagination_token=None):
     search_url = '{}users/{}/tweets'.format(TWITTER_URL_PREFIX, user_id)
     query_params = {
         'tweet.fields': 'id,author_id,public_metrics,created_at,in_reply_to_user_id',
+        'exclude': 'retweets',
         'max_results': 100,
         'pagination_token': pagination_token}
     return search_url, query_params
@@ -47,6 +51,11 @@ def create_url_recent_tweets_on_conversation(tweet_id, since_id, pagination_toke
     return search_url, query_params
 
 def create_url_post_in_reply_to_tweet(comment_id, text):
-    url = '{}tweets'
-    data = '{{"reply":{{"in_reply_to_tweet_id":"{}"}},"text":"{}"}}'.format(comment_id, text)
+    url = '{}tweets'.format(TWITTER_URL_PREFIX)
+    data = json.dumps({
+        "reply": {
+            "in_reply_to_tweet_id": str(comment_id)
+        },
+        "text": text
+    })
     return url, data

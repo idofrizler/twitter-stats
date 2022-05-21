@@ -49,7 +49,11 @@ def get_tweet_info(tweet_id):
     return public_metrics
 
 
+def get_oauth_token():
+    pass
+
+
 if __name__ == '__main__':
-    tweet_id = 1523706291784282114
+    tweet_id = 1527523267321466880
     tweet_info = get_tweet_info(tweet_id)
     add_tweet_to_tracked_list(tweet_id, tweet_info['data']['author_id'])

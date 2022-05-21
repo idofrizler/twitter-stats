@@ -14,12 +14,12 @@ def lookup_new_comments(users_table, tweet_id, tweet_author_id, since_id):
     newest_id = recent_comments['meta'].get('newest_id', since_id)
 
     while pagination_token and 'data' in recent_comments:
-        recent_comments_list = [
-            '{}|{}'.format(comment['author_id'], comment['id']) for comment in recent_comments['data'] 
-            if comment['author_id'] not in preexisting_user_ids 
-            and comment['in_reply_to_user_id'] == tweet_author_id
-        ]
-        new_comments.update(recent_comments_list)
+        for comment in recent_comments['data']:
+            author_id = comment['author_id']
+            comment_id = comment['id']
+            if author_id not in preexisting_user_ids and comment['in_reply_to_user_id'] == tweet_author_id:
+                new_comments.add((author_id, comment_id))
+                preexisting_user_ids.add(author_id)
 
         pagination_token = recent_comments['meta'].get('next_token', None)
         if pagination_token:
@@ -30,12 +30,12 @@ def lookup_new_comments(users_table, tweet_id, tweet_author_id, since_id):
 
 def write_state_to_table(users_table, tweet_id, comments):
     for comment in comments:
-        users_table.update_new_comment_for_processing(tweet_id, comment)
+        users_table.update_new_comment_for_processing(tweet_id, comment[0], comment[1])
 
 
 def add_new_comments_to_queue(msg, users_table, tweet_id, comments):
     write_state_to_table(users_table, tweet_id, comments)
-    comments = ['{}|{}'.format(tweet_id, comment) for comment in comments]
+    comments = ['{}|{}|{}'.format(tweet_id, comment[0], comment[1]) for comment in comments]
 
     logging.info('Pushing {} to queue'.format(comments))
     msg.set(comments)
