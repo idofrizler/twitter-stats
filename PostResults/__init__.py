@@ -23,7 +23,7 @@ def get_most_replied_to_str(tweet_stats):
         logging.info('User metrics: {}'.format(user_metrics))
         return ''
 
-    is_debug = os.environ['DebugMode']
+    is_debug = os.environ['RunMode'] != "Release"
     mention = '' if is_debug else '@' # don't add @ to post when debugging
     msg_str = 'User you replied the most to ({} times) is {}{}\n'.format(most_replied_to_times, mention, username)
     return msg_str
