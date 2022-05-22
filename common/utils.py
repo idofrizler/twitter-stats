@@ -54,6 +54,6 @@ def get_oauth_token():
 
 
 if __name__ == '__main__':
-    tweet_id = 1527523267321466880
+    tweet_id = 1528068671721164802
     tweet_info = get_tweet_info(tweet_id)
     add_tweet_to_tracked_list(tweet_id, tweet_info['data']['author_id'])

@@ -1,4 +1,4 @@
-import json
+import json, os
 
 
 TWITTER_URL_PREFIX = 'https://api.twitter.com/2/'
@@ -59,3 +59,16 @@ def create_url_post_in_reply_to_tweet(comment_id, text):
         "text": text
     })
     return url, data
+
+def create_url_post_refresh_oauth_token(current_access_token, current_refresh_token):
+    url = '{}oauth2/token'.format(TWITTER_URL_PREFIX)
+    data = json.dumps({
+        'grant_type': 'refresh_token',
+        'refresh_token': current_refresh_token
+    })
+
+    client_id = os.environ['ClientId']
+    client_secret = os.environ['ClientSecret']
+    auth = (client_id, client_secret)
+
+    return url, auth, data

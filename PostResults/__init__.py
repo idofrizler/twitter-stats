@@ -1,4 +1,4 @@
-import logging
+import logging, os
 import azure.functions as func
 from ..common import api, table
 
@@ -8,7 +8,7 @@ def get_url_from_tweet_data(max_tweet_id):
     return 'https://twitter.com/qwer/status/{}'.format(max_tweet_id)
 
 
-def get_most_replied_to_str(tweet_stats, is_debug=True):
+def get_most_replied_to_str(tweet_stats):
     if 'MostRepliedToUser' not in tweet_stats:
         return ''
     
@@ -23,6 +23,7 @@ def get_most_replied_to_str(tweet_stats, is_debug=True):
         logging.info('User metrics: {}'.format(user_metrics))
         return ''
 
+    is_debug = os.environ['DebugMode']
     mention = '' if is_debug else '@' # don't add @ to post when debugging
     msg_str = 'User you replied the most to ({} times) is {}{}\n'.format(most_replied_to_times, mention, username)
     return msg_str
@@ -50,22 +51,13 @@ def serialize_stats_to_msg(tweet_stats):
     return msg_str
 
 
-def get_twitter_stats_from_table(tweet_id, user_id):
-    users_table = table.UsersTable()
-    user_stats = users_table.get_stats_for_user(tweet_id, user_id)
-    return user_stats
-
-
-def mark_user_as_completed(user_id):
-    pass # TODO
-
-
 def post_results_for_user(tweet_id, user_id, comment_id):
-    tweet_stats = get_twitter_stats_from_table(tweet_id, user_id)
+    users_table = table.UsersTable()
+    tweet_stats = users_table.get_stats_for_user(tweet_id, user_id)
     msg_str = serialize_stats_to_msg(tweet_stats)
-    oauth_token = table.OauthTokenTable().get_current_token()
-    # api.post_comment(comment_id, msg_str, oauth_token)
-    mark_user_as_completed(user_id)
+    access_token, _ = table.OauthTokenTable().get_current_token()
+    api.post_comment(comment_id, msg_str, access_token)
+    users_table.mark_user_as_completed(tweet_id, user_id, comment_id)
 
 
 def main(msg: func.QueueMessage) -> None:

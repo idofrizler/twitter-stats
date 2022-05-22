@@ -15,10 +15,10 @@ def create_headers(bearer_token, is_json=False):
     return headers
 
 
-def connect_to_endpoint(url, headers, params=None, next_token=None, method="GET", data=None):
+def connect_to_endpoint(url, headers, params=None, next_token=None, method="GET", data=None, auth=None):
     if params:
         params['next_token'] = next_token   # params object received from create_url function
-    response = requests.request(method, url, headers=headers, params=params, data=data)
+    response = requests.request(method, url, headers=headers, params=params, data=data, auth=auth)
 
     while response.status_code == 429:  # Rate limiting
         print('Rate limit reached; sleeping for 5 minutes')
@@ -84,9 +84,13 @@ def post_comment(comment_id, text, oauth_token):
 
 # Oauth token refresh
 
-def get_new_oauth_token(current_token):
-    # TODO
-    pass
+def get_new_oauth_token(current_access_token, current_refresh_token):
+    url, auth, data = urls.create_url_post_refresh_oauth_token(current_access_token, current_refresh_token)
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    resp = connect_to_endpoint(url, method="POST", headers=headers, data=data, auth=auth)
+    return resp['access_token'], resp['refresh_token']
 
 # Init auth information
 

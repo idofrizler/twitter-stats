@@ -57,15 +57,21 @@ class UsersTable(Table):
         entity = self.table_client.get_entity(tweet_id, user_id)
         return entity
 
-    def update_new_comment_for_processing(self, tweet_id, user_id, comment_id):
+    def update_user_state(self, tweet_id, user_id, comment_id, new_state):
         doc = {
             'PartitionKey': str(tweet_id),
             'RowKey': str(user_id),
             'CommentId': str(comment_id),
-            'State': self.UserState.InProgress,
+            'State': new_state,
             'ModifiedDate': datetime.utcnow()
         }
         self.table_client.upsert_entity(mode=UpdateMode.MERGE, entity=doc)
+
+    def update_new_comment_for_processing(self, tweet_id, user_id, comment_id):
+        self.update_user_state(tweet_id, user_id, comment_id, self.UserState.InProgress)
+
+    def mark_user_as_completed(self, tweet_id, user_id, comment_id):
+        self.update_user_state(tweet_id, user_id, comment_id, self.UserState.Completed)
 
     def update_twitter_stats_for_user(self, tweet_id, user_id, comment_id, tweet_stats):
         max_tweet_id, total_like_count, total_reply_count, total_retweet_count, total_quote_count, num_of_tweets, most_replied_to = tweet_stats
@@ -97,13 +103,14 @@ class OauthTokenTable(Table):
 
     def get_current_token(self):
         entity = self.table_client.get_entity(self.PARTITION_KEY, self.ROW_KEY)
-        return entity['Value']
+        return (entity['AccessToken'], entity['RefreshToken'])
 
-    def set_new_token(self, new_token):
+    def set_new_token(self, access_token, refresh_token):
         doc = {
             'PartitionKey': self.PARTITION_KEY,
             'RowKey': self.ROW_KEY,
-            'Value': new_token,
+            'AccessToken': access_token,
+            'RefreshToken': refresh_token,
             'ModifiedDate': datetime.utcnow()
         }
         self.table_client.upsert_entity(mode=UpdateMode.MERGE, entity=doc)
